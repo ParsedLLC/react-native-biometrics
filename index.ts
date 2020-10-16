@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform, NativeAppEventEmitter } from 'react-native';
 
 const { ReactNativeBiometrics: bridge } = NativeModules;
 
@@ -123,11 +123,46 @@ module ReactNativeBiometrics {
      * @returns {Promise<Object>}  Promise that resolves an object with details about the biometrics result
      */
     export function simplePrompt(simplePromptOptions: SimplePromptOptions): Promise<SimplePromptResult> {
-        if (!simplePromptOptions.cancelButtonText) {
-            simplePromptOptions.cancelButtonText = 'Cancel';
+        if (Platform.OS === 'android') {
+            if (!simplePromptOptions.cancelButtonText) {
+                simplePromptOptions.cancelButtonText = 'Cancel';
+            }
+            return new Promise((res, rej) => {
+                let hasResolved = false;
+                try {
+                    
+                    const listener = (d: any) => {
+                        resolve(d);
+                    };
+        
+                    const reject = (err: Error) => {
+                        if (!hasResolved) {
+                            reject(err);
+                        }
+                    }
+        
+                    const resolve = (d: any) => {
+                        NativeAppEventEmitter.removeListener('authSuccess', listener);
+                        if (!hasResolved) {
+                            res(d);
+                        }
+                    }
+                    NativeAppEventEmitter.addListener('authSuccess', listener); 
+                    bridge.simplePrompt(simplePromptOptions).then((d: any) => {
+                        resolve(d);
+                    }).catch(reject);
+                } catch (err) {
+                    rej(err);
+                    hasResolved = true;
+                }
+            })
+        } else {
+            if (!simplePromptOptions.cancelButtonText) {
+                simplePromptOptions.cancelButtonText = 'Cancel';
+            }
+    
+            return bridge.simplePrompt(simplePromptOptions);
         }
-
-        return bridge.simplePrompt(simplePromptOptions);
     }
 }
 

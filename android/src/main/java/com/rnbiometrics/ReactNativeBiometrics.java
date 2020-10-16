@@ -13,6 +13,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
@@ -37,9 +38,11 @@ import java.util.concurrent.Executors;
 public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
 
     protected String biometricKeyAlias = "biometric_key";
+    public ReactContext mReactContext;
 
     public ReactNativeBiometrics(ReactApplicationContext reactContext) {
         super(reactContext);
+        mReactContext = reactContext;
     }
 
     @Override
@@ -186,20 +189,23 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             UiThreadUtil.runOnUiThread(
                     new Runnable() {
+
                         @Override
                         public void run() {
                             try {
                                 String cancelButtomText = params.getString("cancelButtonText");
                                 String promptMessage = params.getString("promptMessage");
 
-                                AuthenticationCallback authCallback = new SimplePromptCallback(promise);
+                                AuthenticationCallback authCallback = new SimplePromptCallback(promise, mReactContext);
                                 FragmentActivity fragmentActivity = (FragmentActivity) getCurrentActivity();
                                 Executor executor = Executors.newSingleThreadExecutor();
                                 BiometricPrompt biometricPrompt = new BiometricPrompt(fragmentActivity, executor, authCallback);
 
                                 PromptInfo promptInfo = new PromptInfo.Builder()
+                                // .setDeviceCredentialAllowed(true)
+//                                        .setNegativeButtonText(cancelButtomText)
                                         .setDeviceCredentialAllowed(false)
-                                        .setNegativeButtonText(cancelButtomText)
+                                       .setNegativeButtonText(cancelButtomText)
                                         .setTitle(promptMessage)
                                         .build();
                                 biometricPrompt.authenticate(promptInfo);
